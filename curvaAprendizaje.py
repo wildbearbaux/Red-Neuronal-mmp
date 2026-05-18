@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.model_selection import cross_val_score
 from sklearn.neural_network import MLPClassifier
 
 
@@ -10,17 +11,6 @@ def zscore_df(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return out
 
 
-def build_phase2_mlp() -> MLPClassifier:
-    return MLPClassifier(
-        hidden_layer_sizes=(22,),
-        activation="relu",
-        solver="adam",
-        learning_rate_init=0.1,
-        max_iter=50_000,
-        random_state=42,
-    )
-
-
 def main() -> None:
     data = pd.read_excel("DataSet_completo.xlsx")
     data = data.drop(columns=["Longitud"])
@@ -29,15 +19,28 @@ def main() -> None:
     x = zscore_df(data[feature_cols], feature_cols)
     y = data["Clase"]
 
-    model = build_phase2_mlp()
-    model.fit(x, y)
+    iterations = range(1, 500, 10)
+    scores = []
 
-    plt.figure(figsize=(8, 4))
-    plt.plot(range(1, len(model.loss_curve_) + 1), model.loss_curve_, color="blue")
-    plt.title("Curva de aprendizaje MLP")
-    plt.xlabel("Iteración")
-    plt.ylabel("Loss")
-    plt.grid(True, alpha=0.3)
+    for it in iterations:
+        neural_net = MLPClassifier(
+            hidden_layer_sizes=(22,),
+            activation="relu",
+            solver="adam",
+            learning_rate_init=0.1,
+            max_iter=it,
+            random_state=42,
+        )
+
+        cv_scores = cross_val_score(neural_net, x, y, cv=5)
+        scores.append(cv_scores.mean())
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(iterations, scores, marker="o")
+    plt.xlabel("Número de iteraciones (max_iter)")
+    plt.ylabel("Accuracy promedio CV=5")
+    plt.title("Curva de aprendizaje usando validación cruzada")
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
 
